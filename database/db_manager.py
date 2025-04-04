@@ -64,9 +64,9 @@ def create_user(username, password):
     try:
         with sqlite3.connect(DB_PATH) as conn:
             conn.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed))
-        print(f"User '{username}' registered.")
+        return f"User '{username}' registered"
     except sqlite3.IntegrityError:
-        print(f"Username '{username}' already exists.")
+        return f"Username '{username}' already exists"
 
 def authenticate_user(username, password):
    

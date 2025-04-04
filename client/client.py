@@ -10,6 +10,23 @@ class Client:
         except ConnectionRefusedError:
             print("Failed to connect to the server. Ensure the server is running.")
             self.client = None
+            
+        
+    def create_user(self, username, password):
+        if not self.client:
+            print("No connection to the server.")
+            return "Connection error"
+        
+        try:
+            
+            self.client.send(f'SIGNUP::{username}::{password}'.encode())
+            
+            # Wait for the server's response
+            response = self.client.recv(1024).decode()
+            return response
+        except Exception as e:
+            print(f"Error during authentication: {e}")
+            return "Authentication failed"
 
     def authenticate_user(self, username, password):
         if not self.client:

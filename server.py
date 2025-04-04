@@ -1,6 +1,7 @@
 import socket
 import threading
-from database.db_manager import authenticate_user, create_message as db_authenticate_user, db_create_message
+from database.db_manager import authenticate_user as db_authenticate_user, create_message as db_create_message, create_user as db_create_user
+
 
 # List to store connected clients
 connected_clients = []
@@ -23,9 +24,16 @@ def handle_client(client_socket, addr):
                 _, username, password = message.split("::")
                 if db_authenticate_user(username, password):
                     client_socket.send("LOG_AUTH".encode())
-                    
                 else:
                     client_socket.send("LOG_DECL".encode())
+            elif message.startswith('SIGNUP::'):
+                _, username, password = message.split('::')
+                result = db_create_user(username, password)
+                if 'registered' in result:
+                    client_socket.send("SIGN_AUTH".encode())
+                else:
+                    client_socket.send("SIGN_DECL".encode())
+
             elif message.startswith('UNICAST-MSG::'): #UNICAST-MSG::MSG::FROM-USERNAME::TO-USERNAME
                 _, msg, sender, receiver = message.split('::')
                 db_create_message(sender, receiver, 'unicast', msg)
