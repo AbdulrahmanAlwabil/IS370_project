@@ -4,8 +4,9 @@ class Client:
     def __init__(self):
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            self.client.connect(('localhost', 8080))
+            self.client.connect(('25.11.190.207', 8080))
             print("Connected to the server.")
+            self.username = None
         except ConnectionRefusedError:
             print("Failed to connect to the server. Ensure the server is running.")
             self.client = None
@@ -21,29 +22,57 @@ class Client:
             
             # Wait for the server's response
             response = self.client.recv(1024).decode()
+            if 'AUTH' in response:
+                self.username = username
             return response
         except Exception as e:
             print(f"Error during authentication: {e}")
             return "Authentication failed"
-
-    def send_messages(self):
+    
+    def send_unicast(self, reciever, msg):
         if not self.client:
             print("No connection to the server.")
-            return
+            return "Connection error"
 
         try:
-            while True:
-                message = input("Enter a message to send (or 'exit' to quit): ")
-                if message.lower() == 'exit':
-                    print("Closing connection...")
-                    self.client.send("DISCONNECT".encode())
-                    break
-                self.client.send(message.encode())
-                response = self.client.recv(1024).decode()
-                print(f"Server response: {response}")
+            self.client.send(f'UNICAST-MSG::{msg}::{self.username}::{reciever}'.encode())
+            
+            # Wait for the server's response
+            response = self.client.recv(4096).decode()
+            return True
         except Exception as e:
-            print(f"Error during communication: {e}")
-        finally:
-            self.client.close()
+            print(f"Error during sending: {e}")
+            return False
 
-    
+    def send_multicast(self, group, msg):
+        if not self.client:
+            print("No connection to the server.")
+            return "Connection error"
+
+        try:
+           
+            self.client.send(f'MULTICAST-MSG::{msg}::{self.username}::{group}'.encode())
+            
+            # Wait for the server's response
+            response = self.client.recv(4096).decode()
+            return True
+        except Exception as e:
+            print(f"Error during sending: {e}")
+            return False
+
+    def send_broadcast(self, msg):
+        
+        if not self.client:
+            print("No connection to the server.")
+            return "Connection error"
+
+        try:
+           
+            self.client.send(f'BROADCAST-MSG::{msg}::{self.username}'.encode())
+            
+            # Wait for the server's response
+            response = self.client.recv(4096).decode()
+            return True
+        except Exception as e:
+            print(f"Error during sending: {e}")
+            return False

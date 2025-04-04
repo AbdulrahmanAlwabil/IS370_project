@@ -1,6 +1,6 @@
 import socket
 import threading
-from database.db_manager import authenticate_user as db_authenticate_user
+from database.db_manager import authenticate_user, create_message as db_authenticate_user, db_create_message
 
 # List to store connected clients
 connected_clients = []
@@ -18,13 +18,23 @@ def handle_client(client_socket, addr):
 
             print(f"Message from {addr}: {message}")
 
-            # Handle LOGIN command
+            ### Handle LOGIN command ###
             if message.startswith("LOGIN::"):
                 _, username, password = message.split("::")
                 if db_authenticate_user(username, password):
                     client_socket.send("LOG_AUTH".encode())
+                    
                 else:
                     client_socket.send("LOG_DECL".encode())
+            elif message.startswith('UNICAST-MSG::'): #UNICAST-MSG::MSG::FROM-USERNAME::TO-USERNAME
+                _, msg, sender, receiver = message.split('::')
+                db_create_message(sender, receiver, 'unicast', msg)
+            elif message.startswith('MULTICAST-MSG::'): #MULTICAST-MSG::MSG::FROM-USERNAME::GROUP-USERNAME
+                _, msg, sender, group = message.split('::')
+                db_create_message(sender, group, 'multicast', msg)
+            elif message.startswith('BROADCAST-MSG::'):
+                _, msg, sender = message.split('::') #BROADCAST-MSG::MSG::FROM-USERNAME
+
             else:
                 client_socket.send("Unknown command.".encode())
     except ConnectionResetError:
@@ -50,7 +60,7 @@ def view_connected_clients():
 
 # Main server setup
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.bind(('localhost', 8080))
+server.bind(('25.11.190.207', 8080))
 server.listen(20)
 print("Server is listening on port 9999...")
 

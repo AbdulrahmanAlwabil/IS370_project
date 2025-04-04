@@ -4,5 +4,8 @@ from client.client import Client
 # create_user('omar', '3333')
 # create_user('abdulrahman', '1111')
 client = Client()
-print(client.authenticate_user('ammar', '3333'))
+
+while True:
+    msg = input("Enter a message for server: ")
+    client.client.send(msg.encode())
 

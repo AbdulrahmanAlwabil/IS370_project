@@ -48,6 +48,7 @@ def init_db():
                 receiver_id INTEGER,
                 type TEXT CHECK(type IN ('unicast', 'multicast', 'broadcast')) NOT NULL,
                 message TEXT NOT NULL,
+                attactment BLOB,
                 FOREIGN KEY(sender_id) REFERENCES users(id)
             )
         ''')
@@ -90,7 +91,7 @@ def get_user_id(username):
         return row[0] if row else None
 
 # ========================
-# GROUP MANAGEMENT
+#    GROUP MANAGEMENT
 # ========================
 
 def create_group(group_name):
@@ -142,24 +143,23 @@ def create_message(sender_username, receiver_identifier, msg_type, content):
     receiver_id = None
 
     if not sender_id:
-        print("Sender not found.")
-        return
+        return "Query failed: Sender not found."
+        
 
     if msg_type == 'unicast':
         receiver_id = get_user_id(receiver_identifier)
         if not receiver_id:
-            print("Unicast failed: user does not exist.")
-            return
+            return "Unicast failed: user does not exist"
+            
     elif msg_type == 'multicast':
         receiver_id = get_group_id(receiver_identifier)
         if not receiver_id:
-            print("Multicast failed: group does not exist.")
-            return
+            return "Multicast failed: group does not exist."
+            
     elif msg_type == 'broadcast':
         receiver_id = None
     else:
-        print("Invalid message type.")
-        return
+        return "Record insertion failed: Invalid message type."
 
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute('''
