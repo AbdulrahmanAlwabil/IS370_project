@@ -1,0 +1,1 @@
+# Use *pip install -r requirements.txt* in IDE terminal.
