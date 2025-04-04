@@ -79,7 +79,7 @@ class LoginSignupApp(ctk.CTk):
 class MessengerApp(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("Messenger Client")
+        self.title("Instant Messenger")
         self.geometry("800x600")
         self.resizable(False, False)
 
@@ -106,7 +106,13 @@ class MessengerApp(ctk.CTk):
         self.create_group_button = ctk.CTkButton(
             self.left_frame, text="Create Group", command=self.create_group
         )
-        self.create_group_button.grid(row=0, column=1, padx=10, pady=5, sticky="e")
+        self.create_group_button.grid(row=0, column=1, padx=2, pady=2, sticky="e")
+
+        # Button to broadcast messages
+        self.broadcast_button = ctk.CTkButton(
+            self.left_frame, text="Broadcast", command=self.open_broadcast_chat
+        )
+        self.broadcast_button.grid(row=0, column=2, padx=2, pady=2, sticky="e")
 
         # Scrollable frame for the list of contacts
         self.contacts_frame = ctk.CTkScrollableFrame(
@@ -116,8 +122,8 @@ class MessengerApp(ctk.CTk):
             row=1, column=0, columnspan=2, padx=10, pady=5, sticky="nswe"
         )
 
-        # Dummy list of contacts
-        self.contacts = ["Alice", "Bob", "Charlie", "David"]
+        
+        self.contacts = client.get_contacts() or [] 
         for contact in self.contacts:
             contact_btn = ctk.CTkButton(
                 self.contacts_frame,
@@ -191,6 +197,17 @@ class MessengerApp(ctk.CTk):
                 messagebox.showerror("Error", f"Failed to create group: {e}")
         else:
             messagebox.showwarning("Warning", "Group name cannot be empty.")
+
+    def open_broadcast_chat(self):
+        # Set the chat title to "Broadcast"
+        self.chat_title_label.configure(text="Broadcast Chat")
+
+        # Clear existing chat messages
+        for widget in self.chat_display.winfo_children():
+            widget.destroy()
+
+        # Optionally, you can add logic here to load previous broadcast messages in the future
+        print("Opened broadcast chat.")
 
     def select_contact(self, contact):
         self.selected_contact = contact

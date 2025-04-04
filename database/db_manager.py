@@ -168,6 +168,40 @@ def create_message(sender_username, receiver_identifier, msg_type, content):
         ''', (sender_id, receiver_id, msg_type, content))
 
     print(f"{msg_type.capitalize()} message stored.")
+    
+def get_chat_history(sender_name, receiver_name, chat_type):
+    
+    sender_id = get_user_id(sender_name)
+    receiver_id = get_user_id(receiver_name)
+    
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        if chat_type == 'broadcast':
+            cur.execute('''SELECT message FROM messages 
+                            WHERE sender_id = ? AND type = ?  
+                            ORDER BY id ASC''', (sender_id, chat_type))
+        else:
+            cur.execute('''SELECT message FROM messages 
+                            WHERE sender_id = ? AND receiver_id = ? AND type = ?  
+                            ORDER BY id ASC''', (sender_id, receiver_id, chat_type))
+            
+        return [row[0] for row in cur.fetchall()]
+
+def get_contacts(sender_username):
+    
+    import pickle
+    
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        cur.execute('''SELECT username FROM users 
+                        WHERE username != ?   
+                        ORDER BY id ASC''', (sender_username,))
+        
+        list = [row[0] for row in cur.fetchall()]
+        pickled = pickle.dumps(list)
+        list = pickle.loads(pickled)
+        print(list)
+        return list
 
 # ========================
 # MAIN FOR TESTING
@@ -175,7 +209,7 @@ def create_message(sender_username, receiver_identifier, msg_type, content):
 
 if __name__ == "__main__":
     init_db()
-
+    get_contacts('abdulrahman')
     # create_user('alice', '1234')
     # create_group('team')
     # add_user_to_group('alice', 'team')

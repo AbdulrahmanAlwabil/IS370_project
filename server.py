@@ -1,6 +1,8 @@
 import socket
 import threading
+import pickle
 from database.db_manager import authenticate_user as db_authenticate_user, create_message as db_create_message, create_user as db_create_user
+from database.db_manager import get_chat_history as db_get_chat_history, get_contacts as db_get_contacts
 
 
 # List to store connected clients
@@ -42,7 +44,24 @@ def handle_client(client_socket, addr):
                 db_create_message(sender, group, 'multicast', msg)
             elif message.startswith('BROADCAST-MSG::'):
                 _, msg, sender = message.split('::') #BROADCAST-MSG::MSG::FROM-USERNAME
-
+                db_create_message(sender, group, 'broadcast', msg)
+            elif message.startswith('GET-HISTORY::'):#GET-HISTORY::FROM-USERNAME::TO-USERNAME::TYPE
+                _, sender, receiver, c_type = message.split('::')
+                chat_list = db_get_chat_history(sender, receiver, c_type)
+                
+                data = pickle.dumps(chat_list)
+                
+                client_socket.send(data)
+            elif message.startswith('GET-CONTACTS::'):
+                _, sender = message.split('::')
+                contact_list = db_get_contacts(sender)
+                
+                data = pickle.dumps(contact_list)
+                # Send the length of the data first (4 bytes)
+                length = len(data).to_bytes(4, byteorder='big')
+                client_socket.sendall(length)
+                # Then send the actual data
+                client_socket.sendall(data)
             else:
                 client_socket.send("Unknown command.".encode())
     except ConnectionResetError:
