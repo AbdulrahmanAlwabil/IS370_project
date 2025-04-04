@@ -56,8 +56,10 @@ class LoginSignupApp(ctk.CTk):
             self.destroy()
             app = MessengerApp()
             app.mainloop()
+        elif 'DECL' in response:
+            messagebox.showerror('Error', 'Password is incorrect')
         else:
-            messagebox.showerror("Error", "Please enter both username and password")
+            messagebox.showerror("Error", "Please fill both username and password")
 
     def signup(self):
         username = self.username_entry.get()
@@ -66,9 +68,9 @@ class LoginSignupApp(ctk.CTk):
         response = client.create_user(username, password)
         
         # Add your signup logic here
-        if 'registered' in response:
+        if 'AUTH' in response:
             messagebox.showinfo("Success", "Signup successful! Please login.")
-        elif 'exists' in response:
+        elif 'DECL' in response:
             messagebox.showerror("Error", "Username is taken.")
         else:
             messagebox.showerror('Error', 'Please fill both username and password')
