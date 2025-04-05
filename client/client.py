@@ -100,22 +100,29 @@ class Client:
     def retrieve_chat_history(self, receiver_username, chat_type):
         if not self.client:
             print("No connection to the server.")
-            return "Connection error"
+            return []  # Return empty list instead of error string
 
         try:
+            self.sending = True
             self.send_encrypted_message(
                 f"GET-HISTORY::{self.username}::{receiver_username}::{chat_type}"
             )
 
             # Wait for the server's response
             response = self.receive_encrypted_object()
-
+            self.sending = False
+            
+            if response is None:
+                print("No chat history received")
+                return []
+                
             chat_list = list(response)
             return chat_list
 
         except Exception as e:
-            print(f"Error during sending: {e}")
-            return "Loading list/dict object has failed"
+            print(f"Error retrieving chat history: {e}")
+            self.sending = False
+            return []  # Return empty list on error
 
     def get_contacts(self):
         if not self.client:
@@ -253,6 +260,7 @@ class Client:
                 try:
                     if not hasattr(self, 'sending') or not self.sending:
                         try:
+                            # Check if there's data available before trying to receive
                             encrypted_data = self.client.recv(4096)
                             if not encrypted_data:
                                 print("Connection closed by server")
@@ -263,18 +271,27 @@ class Client:
                             
                             # Handle different message types
                             if message.startswith("NEW-MSG::"):
-                                _, content, sender = message.split("::")
-                                # Call a callback function to update the UI
-                                if hasattr(self, 'message_callback'):
-                                    self.message_callback(sender, content)
+                                try:
+                                    _, content, sender = message.split("::")
+                                    # Call a callback function to update the UI
+                                    if hasattr(self, 'message_callback'):
+                                        self.message_callback(sender, content)
+                                except ValueError:
+                                    print(f"Error parsing message format: {message}")
                                     
                             elif message.startswith("NEW-GROUP-MSG::"):
-                                _, content, sender, group = message.split("::")
-                                # Call a callback function to update the UI
-                                if hasattr(self, 'group_message_callback'):
-                                    self.group_message_callback(group, sender, content)
+                                try:
+                                    _, content, sender, group = message.split("::")
+                                    # Call a callback function to update the UI
+                                    if hasattr(self, 'group_message_callback'):
+                                        self.group_message_callback(group, sender, content)
+                                except ValueError:
+                                    print(f"Error parsing group message format: {message}")
                             
-                            # Ignore other message types which are responses to commands
+                            # Ignore responses like "MSG-SENT" which are handled by the sending methods
+                            elif "MSG-SENT" in message:
+                                print("Received confirmation of message delivery")
+                                
                         except socket.timeout:
                             # Socket timeout is expected, just continue the loop
                             continue
@@ -288,7 +305,9 @@ class Client:
                         
                 except Exception as e:
                     print(f"Error in listening thread: {e}")
-                    break
+                    # Don't break the loop on error, just continue
+                    import time
+                    time.sleep(0.5)  # Add delay to prevent rapid error loops
                     
         # Make the socket have a timeout so it doesn't block indefinitely
         self.client.settimeout(0.1)
