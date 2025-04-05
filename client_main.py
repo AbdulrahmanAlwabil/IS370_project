@@ -379,25 +379,28 @@ class MessengerApp(ctk.CTk):
 
     def send_message(self):
         msg = self.message_entry.get()
-        if msg and self.selected_contact:
-            if self.selected_contact in self.contacts: # That is, a unicast message
-                if not client.send_unicast(self.selected_contact, msg=msg):
-                    messagebox.showerror('Error', 'Failed to send message')
-                    return
-            elif self.selected_contact in self.groups: # That is, a multicast message
-                if not client.send_multicast(self.selected_contact, msg=msg):
-                    messagebox.showerror('Error', 'Failed to send message')
-                    return
-            elif self.selected_contact == 'broadcast': # That is, a broadcast message
-                if not client.send_broadcast(msg=msg):
-                    messagebox.showerror('Error', 'Failed to send message')
-                    return
+        if not msg or not self.selected_contact:
+            return
+            
+        success = False
+        
+        try:
+            if self.selected_contact in self.contacts:  # Unicast message
+                success = client.send_unicast(self.selected_contact, msg=msg)
+            elif self.selected_contact in self.groups:  # Multicast message
+                success = client.send_multicast(self.selected_contact, msg=msg)
+            elif self.selected_contact == 'broadcast':  # Broadcast message
+                success = client.send_broadcast(msg=msg)
                 
-            self.add_message(msg, sender="me")
-            self.message_entry.delete(0, ctk.END)
+            if success:
+                self.add_message(msg, sender="me")
+                self.message_entry.delete(0, ctk.END)
+            else:
+                messagebox.showerror('Error', 'Failed to send message')
+        except Exception as e:
+            messagebox.showerror('Error', f'Error sending message: {str(e)}')
 
     def attach_file(self):
-        # Place your functionality for attaching an image or video here
         print("Attach file button clicked")
 
 

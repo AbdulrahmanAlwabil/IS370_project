@@ -181,78 +181,117 @@ class Client:
     def send_unicast(self, reciever, msg):
         if not self.client:
             print("No connection to the server.")
-            return "Connection error"
+            return False
 
         try:
+            # Set flag that we're sending a message
+            self.sending = True
+            
             self.send_encrypted_message(
                 f"UNICAST-MSG::{msg}::{self.username}::{reciever}"
             )
 
             # Wait for the server's response
             response = self.receive_encrypted_message()
-            return True
+            
+            # Reset sending flag
+            self.sending = False
+            
+            return "MSG-SENT" in response
         except Exception as e:
             print(f"Error during sending: {e}")
+            self.sending = False
             return False
 
     def send_multicast(self, group, msg):
         if not self.client:
             print("No connection to the server.")
-            return "Connection error"
+            return False
 
         try:
+            self.sending = True
+            
             self.send_encrypted_message(
                 f"MULTICAST-MSG::{msg}::{self.username}::{group}"
             )
 
-            # Wait for the server's response
             response = self.receive_encrypted_message()
-            return True
+            
+            self.sending = False
+            
+            return "MSG-SENT" in response
         except Exception as e:
             print(f"Error during sending: {e}")
+            self.sending = False
             return False
 
     def send_broadcast(self, msg):
-
         if not self.client:
             print("No connection to the server.")
-            return "Connection error"
+            return False
 
         try:
+            self.sending = True
+            
             self.send_encrypted_message(f"BROADCAST-MSG::{msg}::{self.username}")
 
             # Wait for the server's response
             response = self.receive_encrypted_message()
-            return True
+            
+            # Reset sending flag
+            self.sending = False
+            
+            return "MSG-SENT" in response
         except Exception as e:
             print(f"Error during sending: {e}")
+            self.sending = False
             return False
-    # Add a new method to client/client.py to continuously listen for incoming messages
+
     def start_listening(self):
         def listen_for_messages():
             while True:
                 try:
-                    encrypted_data = self.client.recv(4096)
-                    if not encrypted_data:
-                        break
-                        
-                    message = self.encryptor.decrypt_to_string(encrypted_data)
-                    
-                    if message.startswith("NEW-MSG::"):
-                        _, content, sender = message.split("::")
-                        # Call a callback function to update the UI
-                        if hasattr(self, 'message_callback'):
-                            self.message_callback(sender, content)
+                    if not hasattr(self, 'sending') or not self.sending:
+                        try:
+                            encrypted_data = self.client.recv(4096)
+                            if not encrypted_data:
+                                print("Connection closed by server")
+                                break
+                                
+                            message = self.encryptor.decrypt_to_string(encrypted_data)
+                            print(f"Received message: {message}")
                             
-                    elif message.startswith("NEW-GROUP-MSG::"):
-                        _, content, sender, group = message.split("::")
-                        # Call a callback function to update the UI
-                        if hasattr(self, 'group_message_callback'):
-                            self.group_message_callback(group, sender, content)
-                    
+                            # Handle different message types
+                            if message.startswith("NEW-MSG::"):
+                                _, content, sender = message.split("::")
+                                # Call a callback function to update the UI
+                                if hasattr(self, 'message_callback'):
+                                    self.message_callback(sender, content)
+                                    
+                            elif message.startswith("NEW-GROUP-MSG::"):
+                                _, content, sender, group = message.split("::")
+                                # Call a callback function to update the UI
+                                if hasattr(self, 'group_message_callback'):
+                                    self.group_message_callback(group, sender, content)
+                            
+                            # Ignore other message types which are responses to commands
+                        except socket.timeout:
+                            # Socket timeout is expected, just continue the loop
+                            continue
+                        except BlockingIOError:
+                            # Non-blocking socket would raise this
+                            continue
+                    else:
+                        # If we're sending, yield to the main thread
+                        import time
+                        time.sleep(0.1)
+                        
                 except Exception as e:
-                    print(f"Error receiving message: {e}")
+                    print(f"Error in listening thread: {e}")
                     break
                     
+        # Make the socket have a timeout so it doesn't block indefinitely
+        self.client.settimeout(0.1)
+        
         # Start the listening thread
         threading.Thread(target=listen_for_messages, daemon=True).start()
