@@ -212,13 +212,14 @@ class MessengerApp(ctk.CTk):
             # Update UI if we're in the chat with this sender
             if self.selected_contact == sender:
                 self.add_message(message=message, sender=sender)
-            # You might want to add a notification system for messages from other contacts
-        
+                self.chat_history[sender].append({sender:message})
+                        
         def on_group_message_received(group, sender, message):
             # Update UI if we're in the group chat
             if self.selected_contact == group:
                 self.add_message(message=message, sender=sender)
-            # You might want to add a notification system for messages in other groups
+                self.chat_history[sender].append({sender:message})
+
             
         def on_broadcast_message_received(sender, message):
             # Update UI if we're in the broadcast view
@@ -232,10 +233,6 @@ class MessengerApp(ctk.CTk):
         def on_group_added(group_name, creator):
             print(f"Processing group addition: {group_name} by {creator}")
             
-            # Check if group is already in the list to prevent duplicates
-            if group_name in self.groups:
-                print(f"Group {group_name} already exists in UI")
-                return
                 
             # Add the group to the UI
             group_button = ctk.CTkButton(
