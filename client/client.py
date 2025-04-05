@@ -350,6 +350,14 @@ class Client:
                                             self.broadcast_message_callback(sender, content)
                                     except ValueError:
                                         print(f"Error parsing broadcast message format: {message}")
+                                        
+                                elif message.startswith("NEW-GROUP-ADDED::"):
+                                    try:
+                                        _, group_name, creator = message.split("::")
+                                        if hasattr(self, 'group_added_callback'):
+                                            self.group_added_callback(group_name, creator)
+                                    except ValueError:
+                                        print(f"Error parsing group added message: {message}")
                         except socket.timeout:
                             continue
                             

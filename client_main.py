@@ -229,10 +229,27 @@ class MessengerApp(ctk.CTk):
                 self.broadcast_history = []
             self.broadcast_history.append({sender: message})
         
+        def on_group_added(group_name, creator):
+            # Add the group to the UI
+            group_button = ctk.CTkButton(
+                self.contacts_frame,
+                text=group_name,
+                command=lambda g=group_name: self.select_contact(g)
+            )
+            group_button.pack(padx=5, pady=5, fill="x")
+            
+            # Add to groups list and initialize chat history
+            self.groups.append(group_name)
+            self.chat_history[group_name] = []
+            
+            # Notify user
+            messagebox.showinfo("New Group", f"You have been added to group '{group_name}' by {creator}")
+        
         # Set the callbacks on the client
         client.message_callback = on_message_received
         client.group_message_callback = on_group_message_received
         client.broadcast_message_callback = on_broadcast_message_received
+        client.group_added_callback = on_group_added
         
         # Start the listening thread
         client.start_listening()

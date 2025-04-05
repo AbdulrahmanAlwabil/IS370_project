@@ -143,6 +143,17 @@ def handle_client(client_socket, addr):
                 # Add creator and all members to the group
                 for username in [creator] + members:
                     db_add_user_to_group(username, group_name)
+                
+                # Send notification to all members except creator
+                for username in members:
+                    if username in username_to_socket:
+                        try:
+                            member_socket = username_to_socket[username]
+                            member_encryptor = socket_to_encryptor[member_socket]
+                            notification = f"NEW-GROUP-ADDED::{group_name}::{creator}"
+                            member_socket.send(member_encryptor.encrypt(notification))
+                        except Exception as e:
+                            print(f"Failed to send group notification to {username}: {e}")
 
                 response = "GROUP-CREATED-SUCCESS"
                 client_socket.send(encryptor.encrypt(response))
