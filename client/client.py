@@ -1,6 +1,7 @@
 import socket
 import pickle
 from encryption import Encryptor
+import threading
 
 
 class Client:
@@ -226,3 +227,32 @@ class Client:
         except Exception as e:
             print(f"Error during sending: {e}")
             return False
+    # Add a new method to client/client.py to continuously listen for incoming messages
+    def start_listening(self):
+        def listen_for_messages():
+            while True:
+                try:
+                    encrypted_data = self.client.recv(4096)
+                    if not encrypted_data:
+                        break
+                        
+                    message = self.encryptor.decrypt_to_string(encrypted_data)
+                    
+                    if message.startswith("NEW-MSG::"):
+                        _, content, sender = message.split("::")
+                        # Call a callback function to update the UI
+                        if hasattr(self, 'message_callback'):
+                            self.message_callback(sender, content)
+                            
+                    elif message.startswith("NEW-GROUP-MSG::"):
+                        _, content, sender, group = message.split("::")
+                        # Call a callback function to update the UI
+                        if hasattr(self, 'group_message_callback'):
+                            self.group_message_callback(group, sender, content)
+                    
+                except Exception as e:
+                    print(f"Error receiving message: {e}")
+                    break
+                    
+        # Start the listening thread
+        threading.Thread(target=listen_for_messages, daemon=True).start()

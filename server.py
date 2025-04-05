@@ -2,6 +2,7 @@ import socket
 import threading
 import pickle
 from encryption import Encryptor
+from client import Client
 from database.db_manager import (
         authenticate_user as db_authenticate_user,
         create_message as db_create_message,
@@ -10,18 +11,21 @@ from database.db_manager import (
         add_user_to_group as db_add_user_to_group,
         get_chat_history as db_get_chat_history,
         get_contacts as db_get_contacts,
-        get_user_groups as db_get_user_groups
+        get_user_groups as db_get_user_groups,
+        get_group_members as db_get_group_members
     )
 
 # List to store connected clients
 connected_clients = []
-
+username_to_socket = {} 
+socket_to_encryptor = {}
 
 # Function to handle communication with a client
 def handle_client(client_socket, addr):
     print(f"Connected by {addr}")
     connected_clients.append((client_socket, addr))  # Add client to the list
     encryptor = Encryptor()  # Initialize encryptor for this connection
+    client_object = None
 
     try:
         while True:
@@ -39,10 +43,13 @@ def handle_client(client_socket, addr):
                 _, username, password = message.split("::")
                 if db_authenticate_user(username, password):
                     response = "LOG_AUTH"
+                    username_to_socket[username] = client_socket
+                    socket_to_encryptor[client_socket] = encryptor
                 else:
                     response = "LOG_DECL"
                 # Encrypt the response
                 client_socket.send(encryptor.encrypt(response))
+            
             elif message.startswith("SIGNUP::"):
                 _, username, password = message.split("::")
                 result = db_create_user(username, password)
@@ -51,6 +58,7 @@ def handle_client(client_socket, addr):
                 else:
                     response = "SIGN_DECL"
                 client_socket.send(encryptor.encrypt(response))
+                
 
             elif message.startswith(
                 "UNICAST-MSG::"
@@ -59,6 +67,15 @@ def handle_client(client_socket, addr):
                 db_create_message(sender, receiver, "unicast", msg)
                 response = "MSG-SENT"
                 client_socket.send(encryptor.encrypt(response))
+                 # Forward the message to the recipient if they're online
+                if receiver in username_to_socket:
+                    recipient_socket = username_to_socket[receiver]
+                    recipient_encryptor = socket_to_encryptor[recipient_socket]
+                    # Format message for recipient: NEW-MSG::message::sender
+                    notification = f"NEW-MSG::{msg}::{sender}"
+                    recipient_socket.send(recipient_encryptor.encrypt(notification))
+                
+                
             elif message.startswith(
                 "MULTICAST-MSG::"
             ):  # MULTICAST-MSG::MSG::FROM-USERNAME::GROUP-USERNAME
@@ -66,6 +83,17 @@ def handle_client(client_socket, addr):
                 db_create_message(sender, group, "multicast", msg)
                 response = "MSG-SENT"
                 client_socket.send(encryptor.encrypt(response))
+                
+                 # Forward to all group members who are online
+                group_members = db_get_group_members(group)  # You need to implement this
+                for member in group_members:
+                    if member != sender and member in username_to_socket:
+                        member_socket = username_to_socket[member]
+                        member_encryptor = socket_to_encryptor[member_socket]
+                        notification = f"NEW-GROUP-MSG::{msg}::{sender}::{group}"
+                        member_socket.send(member_encryptor.encrypt(notification))
+                            
+                
             elif message.startswith("BROADCAST-MSG::"):
                 _, msg, sender = message.split(
                     "::"
@@ -114,8 +142,16 @@ def handle_client(client_socket, addr):
                 client_socket.send(encryptor.encrypt(response))
     except Exception as e:
         print(f"Error handling client {addr}: {e}")
+    # In the finally block of handle_client:
     finally:
         connected_clients.remove((client_socket, addr))
+        # Remove the username mapping
+        for username, sock in list(username_to_socket.items()):
+            if sock == client_socket:
+                del username_to_socket[username]
+                break
+        if client_socket in socket_to_encryptor:
+            del socket_to_encryptor[client_socket]
         client_socket.close()
 
 
@@ -139,7 +175,7 @@ def view_connected_clients():
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(("25.11.190.207", 8080))
 server.listen(20)
-print("Server is listening on port 9999...")
+print("Server is listening on port 8080...")
 
 
 # Thread to accept new clients
@@ -166,6 +202,12 @@ def authenticate_user(username, password):
     else:
         print(f"Authentication failed for user '{username}'.")
         return False
+
+
+    def find_client(username):
+        for i in object_connected_clients:
+            if i.username == username:
+                return i    
 
 
 # Command loop for the server admin
