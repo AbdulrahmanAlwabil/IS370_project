@@ -342,6 +342,14 @@ class Client:
                                             self.group_message_callback(group, sender, content)
                                     except ValueError:
                                         print(f"Error parsing group message format: {message}")
+                                        
+                                elif message.startswith("NEW-BROADCAST-MSG::"):
+                                    try:
+                                        _, content, sender = message.split("::")
+                                        if hasattr(self, 'broadcast_message_callback'):
+                                            self.broadcast_message_callback(sender, content)
+                                    except ValueError:
+                                        print(f"Error parsing broadcast message format: {message}")
                         except socket.timeout:
                             continue
                             

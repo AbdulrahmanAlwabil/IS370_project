@@ -100,6 +100,16 @@ def handle_client(client_socket, addr):
                 db_create_message(sender, None, "broadcast", msg)
                 response = "MSG-SENT"
                 client_socket.send(encryptor.encrypt(response))
+                
+                # Forward the broadcast message to all connected clients
+                for username, recipient_socket in username_to_socket.items():
+                    if username != sender:  # Don't send back to the original sender
+                        try:
+                            recipient_encryptor = socket_to_encryptor[recipient_socket]
+                            notification = f"NEW-BROADCAST-MSG::{msg}::{sender}"
+                            recipient_socket.send(recipient_encryptor.encrypt(notification))
+                        except Exception as e:
+                            print(f"Failed to forward broadcast message to {username}: {e}")
             elif message.startswith(
                 "GET-HISTORY::"
             ):  # GET-HISTORY::FROM-USERNAME::TO-USERNAME::TYPE

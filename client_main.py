@@ -219,10 +219,20 @@ class MessengerApp(ctk.CTk):
             if self.selected_contact == group:
                 self.add_message(message=message, sender=sender)
             # You might want to add a notification system for messages in other groups
+            
+        def on_broadcast_message_received(sender, message):
+            # Update UI if we're in the broadcast view
+            if self.selected_contact == 'broadcast':
+                self.add_message(message=message, sender=sender)
+            # Add the message to broadcast history for when user opens broadcast later
+            if not self.broadcast_history:
+                self.broadcast_history = []
+            self.broadcast_history.append({sender: message})
         
         # Set the callbacks on the client
         client.message_callback = on_message_received
         client.group_message_callback = on_group_message_received
+        client.broadcast_message_callback = on_broadcast_message_received
         
         # Start the listening thread
         client.start_listening()
