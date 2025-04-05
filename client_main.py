@@ -397,10 +397,13 @@ class MessengerApp(ctk.CTk):
         try:
             if self.selected_contact in self.contacts:  # Unicast message
                 success = client.send_unicast(self.selected_contact, msg=msg)
+                self.chat_history[self.selected_contact].append({client.username:msg})
             elif self.selected_contact in self.groups:  # Multicast message
                 success = client.send_multicast(self.selected_contact, msg=msg)
+                self.chat_history[self.selected_contact].append({client.username:msg})
             elif self.selected_contact == 'broadcast':  # Broadcast message
                 success = client.send_broadcast(msg=msg)
+                self.broadcast_history.append({client.username:msg})
                 
             if success:
                 self.add_message(msg, sender="me")
