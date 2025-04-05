@@ -218,7 +218,7 @@ class MessengerApp(ctk.CTk):
             # Update UI if we're in the group chat
             if self.selected_contact == group:
                 self.add_message(message=message, sender=sender)
-                self.chat_history[sender].append({sender:message})
+                self.chat_history[group].append({sender:message})
 
             
         def on_broadcast_message_received(sender, message):
