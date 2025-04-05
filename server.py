@@ -2,7 +2,6 @@ import socket
 import threading
 import pickle
 from encryption import Encryptor
-from client import Client
 from database.db_manager import (
         authenticate_user as db_authenticate_user,
         create_message as db_create_message,

@@ -50,7 +50,6 @@ class LoginSignupApp(ctk.CTk):
         
         response = client.authenticate_user(username, password)
         
-        
         # Add your login logic here
         if 'AUTH' in response:
             self.destroy()
@@ -203,6 +202,30 @@ class MessengerApp(ctk.CTk):
 
         # Currently selected contact (None initially)
         self.selected_contact = None
+        
+        # Setup message callbacks and start listening for messages
+        self.setup_message_callbacks()
+        
+    def setup_message_callbacks(self):
+        # Setup callbacks for messages
+        def on_message_received(sender, message):
+            # Update UI if we're in the chat with this sender
+            if self.selected_contact == sender:
+                self.add_message(message=message, sender=sender)
+            # You might want to add a notification system for messages from other contacts
+        
+        def on_group_message_received(group, sender, message):
+            # Update UI if we're in the group chat
+            if self.selected_contact == group:
+                self.add_message(message=message, sender=sender)
+            # You might want to add a notification system for messages in other groups
+        
+        # Set the callbacks on the client
+        client.message_callback = on_message_received
+        client.group_message_callback = on_group_message_received
+        
+        # Start the listening thread
+        client.start_listening()
 
     def create_group(self):
         # First, prompt the user to enter a group name
