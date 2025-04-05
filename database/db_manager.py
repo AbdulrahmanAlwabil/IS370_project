@@ -90,6 +90,13 @@ def get_user_id(username):
         row = cur.fetchone()
         return row[0] if row else None
 
+def get_username(id):
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT username FROM users WHERE id = ?", (id,))
+        row = cur.fetchone()
+        return row[0] if row else None
+    
 # ========================
 #    GROUP MANAGEMENT
 # ========================
@@ -99,15 +106,10 @@ def create_group(group_name):
         with sqlite3.connect(DB_PATH) as conn:
             conn.execute("INSERT INTO groups (name) VALUES (?)", (group_name,))
         print(f"Group '{group_name}' created.")
+        return True
     except sqlite3.IntegrityError:
         print(f"Group '{group_name}' already exists.")
-
-def get_group_id(group_name):
-    with sqlite3.connect(DB_PATH) as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT id FROM groups WHERE name = ?", (group_name,))
-        row = cur.fetchone()
-        return row[0] if row else None
+        return False
 
 def add_user_to_group(username, group_name):
     user_id = get_user_id(username)
@@ -118,10 +120,20 @@ def add_user_to_group(username, group_name):
             with sqlite3.connect(DB_PATH) as conn:
                 conn.execute("INSERT INTO group_members (user_id, group_id) VALUES (?, ?)", (user_id, group_id))
             print(f"Added '{username}' to group '{group_name}'.")
+            return True
         except sqlite3.IntegrityError:
             print(f"User '{username}' is already in group '{group_name}'.")
+            return True  # Still successful since the user is in the group
     else:
         print("Invalid username or group name.")
+        return False
+
+def get_group_id(group_name):
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM groups WHERE name = ?", (group_name,))
+        row = cur.fetchone()
+        return row[0] if row else None
 
 def get_group_members(group_name):
     with sqlite3.connect(DB_PATH) as conn:
@@ -133,9 +145,24 @@ def get_group_members(group_name):
             WHERE g.name = ?
         ''', (group_name,))
         return [row[0] for row in cur.fetchall()]
+    
+def get_user_groups(username):
+    user_id = get_user_id(username)
+    if not user_id:
+        return []
+        
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        cur.execute('''
+            SELECT g.name FROM groups AS g
+            JOIN group_members AS gm ON gm.group_id = g.id
+            WHERE gm.user_id = ?
+            ORDER BY g.name ASC
+        ''', (user_id,))
+        return [row[0] for row in cur.fetchall()]
 
 # ========================
-# MESSAGES
+#        MESSAGES
 # ========================
 
 def create_message(sender_username, receiver_identifier, msg_type, content):
@@ -170,38 +197,70 @@ def create_message(sender_username, receiver_identifier, msg_type, content):
     print(f"{msg_type.capitalize()} message stored.")
     
 def get_chat_history(sender_name, receiver_name, chat_type):
-    
     sender_id = get_user_id(sender_name)
-    receiver_id = get_user_id(receiver_name)
     
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.cursor()
+        history = []
+        
         if chat_type == 'broadcast':
-            cur.execute('''SELECT message FROM messages 
-                            WHERE sender_id = ? AND type = ?  
-                            ORDER BY id ASC''', (sender_id, chat_type))
-        else:
-            cur.execute('''SELECT message FROM messages 
-                            WHERE sender_id = ? AND receiver_id = ? AND type = ?  
-                            ORDER BY id ASC''', (sender_id, receiver_id, chat_type))
+            # Get ALL broadcast messages with sender info
+            cur.execute('''SELECT message, sender_id FROM messages 
+                           WHERE type = 'broadcast'  
+                           ORDER BY id ASC''')
             
-        return [row[0] for row in cur.fetchall()]
+            for row in cur.fetchall():
+                message = row[0]
+                sender = get_username(row[1])
+                history.append({sender: message})
+            
+        elif chat_type == 'multicast':
+            # Get group ID from the group name
+            group_id = get_group_id(receiver_name)
+            
+            if not group_id:
+                print(f"Group '{receiver_name}' not found")
+                return []
+                
+            # Get all messages sent to this group
+            cur.execute('''SELECT message, sender_id FROM messages 
+                           WHERE receiver_id = ? AND type = 'multicast'  
+                           ORDER BY id ASC''', (group_id,))
+            
+            for row in cur.fetchall():
+                message = row[0]
+                sender = get_username(row[1])
+                history.append({sender: message})
+                
+        elif chat_type == 'unicast':
+            receiver_id = get_user_id(receiver_name)
+            if not receiver_id:
+                return []
+                
+            cur.execute('''SELECT message, sender_id FROM messages 
+                           WHERE ((sender_id = ? AND receiver_id = ?) OR 
+                                 (sender_id = ? AND receiver_id = ?)) AND type = 'unicast'  
+                           ORDER BY id ASC''', 
+                        (sender_id, receiver_id, receiver_id, sender_id))
+            
+            for row in cur.fetchall():
+                message = row[0]
+                sender = get_username(row[1])
+                history.append({sender: message})
+        else:
+            raise ValueError('Message type value is not recognized by database (unicast, multicast, broadcast).')
+        
+        return history
 
 def get_contacts(sender_username):
-    
-    import pickle
-    
+        
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.cursor()
         cur.execute('''SELECT username FROM users 
                         WHERE username != ?   
                         ORDER BY id ASC''', (sender_username,))
         
-        list = [row[0] for row in cur.fetchall()]
-        pickled = pickle.dumps(list)
-        list = pickle.loads(pickled)
-        print(list)
-        return list
+        return [row[0] for row in cur.fetchall()]
 
 # ========================
 # MAIN FOR TESTING
@@ -209,8 +268,10 @@ def get_contacts(sender_username):
 
 if __name__ == "__main__":
     init_db()
-    get_contacts('abdulrahman')
+    
+    # get_contacts('abdulrahman')
     # create_user('alice', '1234')
     # create_group('team')
     # add_user_to_group('alice', 'team')
-    # create_message('alice', 'team', 'multicast', 'Hello Team!')
+    # create_message('abdulrahman', 'omar', 'unicast', 'Omar, you forgot your phone with me')
+    # create_message('mohamed', None, 'broadcast', 'Hey guys, I wanted to invite you all to the party next Friday!')

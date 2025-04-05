@@ -119,11 +119,19 @@ class MessengerApp(ctk.CTk):
             self.left_frame, width=180, height=500
         )
         self.contacts_frame.grid(
-            row=1, column=0, columnspan=2, padx=10, pady=5, sticky="nswe"
+            row=1, column=0, columnspan=3, padx=10, pady=5, sticky="nsew"  # Change columnspan to 3 and sticky to "nsew"
         )
 
+        # Also fix the column configuration to distribute space properly
+        self.left_frame.grid_columnconfigure(0, weight=1)  # Contacts label column
+        self.left_frame.grid_columnconfigure(1, weight=1)  # Create Group button column
+        self.left_frame.grid_columnconfigure(2, weight=1)  # Broadcast button column
+
+        # This for loop displays all contacts and retreives unicast chat history
+        self.contacts = client.get_contacts()
+        self.groups = client.get_user_groups()
+        self.chat_history = dict() # {'user1':{'user1':'msg11', 'user2':'msg12',...,username:'msg1n'}, user2:..., group1:...}
         
-        self.contacts = client.get_contacts() or [] 
         for contact in self.contacts:
             contact_btn = ctk.CTkButton(
                 self.contacts_frame,
@@ -131,9 +139,25 @@ class MessengerApp(ctk.CTk):
                 command=lambda c=contact: self.select_contact(c),
             )
             contact_btn.pack(padx=5, pady=5, fill="x")
-
+            
+            self.chat_history[contact] = client.retrieve_chat_history(contact, 'unicast')
+            
+        # Create group chats and retreive group history
+        for group in self.groups:
+            group_button = ctk.CTkButton(
+                self.contacts_frame,
+                text=group,
+                command=lambda g=group: self.select_contact(g),
+            )
+            group_button.pack(padx=5, pady=5, fill="x")
+            
+            self.chat_history[group] = client.retrieve_chat_history(group, 'multicast')     
+             
+        # Retreive Broadcast history
+        self.broadcast_history = client.retrieve_chat_history(receiver_username=None, chat_type='broadcast') 
+        print(self.chat_history)
         # --------------------------
-        # Right Frame: Chat Area
+        #   Right Frame: Chat Area
         # --------------------------
         self.right_frame = ctk.CTkFrame(self)
         self.right_frame.grid(row=0, column=1, sticky="nswe", padx=10, pady=10)
@@ -181,24 +205,82 @@ class MessengerApp(ctk.CTk):
         self.selected_contact = None
 
     def create_group(self):
-        # Prompt the user to enter a group name
+        # First, prompt the user to enter a group name
         group_name = ctk.CTkInputDialog(
             title="Create Group", text="Enter the name of the group:"
         ).get_input()
 
-        if group_name:
-            try:
-                from database.db_manager import create_group
+        if not group_name:
+            messagebox.showwarning("Warning", "Group name cannot be empty.")
+            return
 
-                # Call the create_group function from db_manager.py
-                create_group(group_name)
-                messagebox.showinfo("Success", f"Group '{group_name}' created successfully!")
+        # Create a custom dialog to select contacts
+        select_members_dialog = ctk.CTkToplevel(self)
+        select_members_dialog.title(f"Add Members to {group_name}")
+        select_members_dialog.geometry("300x400")
+        select_members_dialog.resizable(False, False)
+        select_members_dialog.grab_set()  # Make it modal
+
+        # Label
+        ctk.CTkLabel(select_members_dialog, text="Select contacts to add:").pack(pady=10)
+
+        # Frame for contacts
+        contacts_frame = ctk.CTkScrollableFrame(select_members_dialog, width=250, height=280)
+        contacts_frame.pack(padx=10, pady=5, fill="both", expand=True)
+
+        # Create checkboxes for each contact
+        contact_vars = {}
+        for contact in self.contacts:
+            var = ctk.IntVar(value=0)
+            contact_vars[contact] = var
+            ctk.CTkCheckBox(contacts_frame, text=contact, variable=var).pack(pady=3, anchor="w")
+
+        # Add selected users to group and close dialog
+        def confirm_selection():
+            selected_contacts = [contact for contact, var in contact_vars.items() if var.get() == 1]
+            
+            if not selected_contacts:
+                messagebox.showwarning("Warning", "Please select at least one contact.")
+                return
+
+            try:
+                # Call the client method to create a group and add members
+                if client.create_group(group_name, selected_contacts):
+                    # Add the group to the UI
+                    group_button = ctk.CTkButton(
+                        self.contacts_frame,
+                        text=f"Group: {group_name}",  # Prefix with "Group:" to differentiate
+                        command=lambda g=group_name: self.select_contact(g),
+                    )
+                    group_button.pack(padx=5, pady=5, fill="x")
+                    
+                    # Initialize an empty chat history for the group
+                    self.groups.append(group_name)
+                    self.chat_history[group_name] = []
+                    
+                    messagebox.showinfo("Success", f"Group '{group_name}' created successfully!")
+                    select_members_dialog.destroy()
+                else:
+                    messagebox.showerror("Error", "Failed to create group.")
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to create group: {e}")
-        else:
-            messagebox.showwarning("Warning", "Group name cannot be empty.")
+            
+            select_members_dialog.destroy()
+
+        # Buttons
+        buttons_frame = ctk.CTkFrame(select_members_dialog)
+        buttons_frame.pack(pady=10, fill="x")
+        
+        ctk.CTkButton(
+            buttons_frame, text="Cancel", command=select_members_dialog.destroy
+        ).pack(side="left", padx=10, pady=5, expand=True)
+        
+        ctk.CTkButton(
+            buttons_frame, text="Create Group", command=confirm_selection
+        ).pack(side="right", padx=10, pady=5, expand=True)
 
     def open_broadcast_chat(self):
+        self.selected_contact = 'broadcast'
         # Set the chat title to "Broadcast"
         self.chat_title_label.configure(text="Broadcast Chat")
 
@@ -206,8 +288,10 @@ class MessengerApp(ctk.CTk):
         for widget in self.chat_display.winfo_children():
             widget.destroy()
 
-        # Optionally, you can add logic here to load previous broadcast messages in the future
-        print("Opened broadcast chat.")
+        if self.broadcast_history:
+            for message_dict in self.broadcast_history:
+                for sender, message in message_dict.items():
+                    self.add_message(message=message, sender=sender) if sender != client.username else self.add_message(message=message, sender='me')
 
     def select_contact(self, contact):
         self.selected_contact = contact
@@ -217,9 +301,16 @@ class MessengerApp(ctk.CTk):
         for widget in self.chat_display.winfo_children():
             widget.destroy()
 
-        # Optionally, populate with a dummy conversation
-        self.add_message(f"Hello! This is {contact}.", sender="other")
-        self.add_message("Hi! How are you?", sender="me")
+        # {'user1':{'user1':'msg11', 'user2':'msg12',...,username:'msg1n'}, user2:..., group1:...}
+        # self.chat_history[contact] 
+        # self.add_message('Hello there!')
+        # self.add_message('Hey! How are you?', sender='me')
+        
+        if self.chat_history[contact]:
+            for message_dict in self.chat_history[contact]:
+                for sender, message in message_dict.items():
+                    self.add_message(message=message, sender=sender) if sender != client.username else self.add_message(message=message, sender='me')
+        
 
     def add_message(self, message, sender="other"):
 
@@ -235,9 +326,22 @@ class MessengerApp(ctk.CTk):
                 fg_color="#284b9e",
                 corner_radius=5,
                 anchor="e",
+                wraplength=300,
+                justify='left',
             )
             message_label.pack(side="right", padx=10)
         else:
+            
+            username_label = ctk.CTkLabel(
+            message_frame,
+            text=sender,
+            bg_color='transparent',
+            font=("Helvetica", 10),  # Smaller font for username
+            text_color="#888888",    # Gray color for username
+            anchor="w",              # Left-aligned text
+        )
+            username_label.pack(side="top", anchor="w", padx=10, pady=(2, 0))
+            
             # Other user's messages are left-aligned
             message_label = ctk.CTkLabel(
                 message_frame,
@@ -245,15 +349,29 @@ class MessengerApp(ctk.CTk):
                 fg_color="#1c8018",
                 corner_radius=5,
                 anchor="w",
+                wraplength=300,
+                justify='left',
             )
             message_label.pack(side="left", padx=10)
 
     def send_message(self):
         msg = self.message_entry.get()
         if msg and self.selected_contact:
+            if self.selected_contact in self.contacts: # That is, a unicast message
+                if not client.send_unicast(self.selected_contact, msg=msg):
+                    messagebox.showerror('Error', 'Failed to send message')
+                    return
+            elif self.selected_contact in self.groups: # That is, a multicast message
+                if not client.send_multicast(self.selected_contact, msg=msg):
+                    messagebox.showerror('Error', 'Failed to send message')
+                    return
+            elif self.selected_contact == 'broadcast': # That is, a broadcast message
+                if not client.send_broadcast(msg=msg):
+                    messagebox.showerror('Error', 'Failed to send message')
+                    return
+                
             self.add_message(msg, sender="me")
             self.message_entry.delete(0, ctk.END)
-            # Place your functionality for sending the message here
 
     def attach_file(self):
         # Place your functionality for attaching an image or video here
