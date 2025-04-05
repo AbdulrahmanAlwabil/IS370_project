@@ -310,66 +310,65 @@ class Client:
         def listen_for_messages():
             while True:
                 try:
-                    # Only try to receive when we're not actively sending
-                    if not hasattr(self, 'sending') or not self.sending:
+                    # Use select to check if there's data available without blocking
+                    import select
+                    ready_to_read, _, _ = select.select([self.client], [], [], 0.1)
+                    
+                    if ready_to_read:
                         try:
-                            # Use select to check if there's data available without blocking
-                            import select
-                            ready_to_read, _, _ = select.select([self.client], [], [], 0.1)
-                            
-                            if ready_to_read:
-                                encrypted_data = self.client.recv(4096)
-                                if not encrypted_data:
-                                    print("Connection closed by server")
-                                    break
-                                    
-                                message = self.encryptor.decrypt_to_string(encrypted_data)
-                                print(f"Received message: {message}")
+                            encrypted_data = self.client.recv(4096)
+                            if not encrypted_data:
+                                print("Connection closed by server")
+                                break
                                 
-                                # Process real-time messages, not command responses
-                                if message.startswith("NEW-MSG::"):
-                                    try:
-                                        _, content, sender = message.split("::")
-                                        if hasattr(self, 'message_callback'):
-                                            self.message_callback(sender, content)
-                                    except ValueError:
-                                        print(f"Error parsing message format: {message}")
-                                        
-                                elif message.startswith("NEW-GROUP-MSG::"):
-                                    try:
-                                        _, content, sender, group = message.split("::")
-                                        if hasattr(self, 'group_message_callback'):
-                                            self.group_message_callback(group, sender, content)
-                                    except ValueError:
-                                        print(f"Error parsing group message format: {message}")
-                                        
-                                elif message.startswith("NEW-BROADCAST-MSG::"):
-                                    try:
-                                        _, content, sender = message.split("::")
-                                        if hasattr(self, 'broadcast_message_callback'):
-                                            self.broadcast_message_callback(sender, content)
-                                    except ValueError:
-                                        print(f"Error parsing broadcast message format: {message}")
-                                        
-                                elif message.startswith("NEW-GROUP-ADDED::"):
-                                    try:
-                                        _, group_name, creator = message.split("::")
-                                        if hasattr(self, 'group_added_callback'):
-                                            self.group_added_callback(group_name, creator)
-                                    except ValueError:
-                                        print(f"Error parsing group added message: {message}")
-                        except socket.timeout:
-                            continue
+                            message = self.encryptor.decrypt_to_string(encrypted_data)
+                            print(f"Received message: {message}")
                             
-                    else:
-                        # We're sending, so yield to the sending thread
-                        import time
-                        time.sleep(0.1)
-                        
+                            # Process all real-time messages regardless of sending state
+                            if message.startswith("NEW-MSG::"):
+                                try:
+                                    _, content, sender = message.split("::")
+                                    if hasattr(self, 'message_callback'):
+                                        self.message_callback(sender, content)
+                                except ValueError:
+                                    print(f"Error parsing message format: {message}")
+                                    
+                            elif message.startswith("NEW-GROUP-MSG::"):
+                                try:
+                                    _, content, sender, group = message.split("::")
+                                    if hasattr(self, 'group_message_callback'):
+                                        self.group_message_callback(group, sender, content)
+                                except ValueError:
+                                    print(f"Error parsing group message format: {message}")
+                                    
+                            elif message.startswith("NEW-BROADCAST-MSG::"):
+                                try:
+                                    _, content, sender = message.split("::")
+                                    if hasattr(self, 'broadcast_message_callback'):
+                                        self.broadcast_message_callback(sender, content)
+                                except ValueError:
+                                    print(f"Error parsing broadcast message format: {message}")
+                                    
+                            elif message.startswith("NEW-GROUP-ADDED::"):
+                                try:
+                                    _, group_name, creator = message.split("::")
+                                    print(f"Group add notification received: {group_name} by {creator}")
+                                    if hasattr(self, 'group_added_callback'):
+                                        self.group_added_callback(group_name, creator)
+                                except ValueError:
+                                    print(f"Error parsing group added message: {message}")
+                                    
+                            elif "MSG-SENT" in message:
+                                # This is a response to a send operation
+                                self.sending = False
+                                
+                        except Exception as e:
+                            print(f"Error processing message: {e}")
+                            
                 except Exception as e:
                     print(f"Error in listening thread: {e}")
                     import time
                     time.sleep(0.5)  # Add delay to prevent rapid error loops
-                    
+                        
         # Start the listening thread
         threading.Thread(target=listen_for_messages, daemon=True).start()

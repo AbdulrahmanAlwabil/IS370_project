@@ -230,17 +230,24 @@ class MessengerApp(ctk.CTk):
             self.broadcast_history.append({sender: message})
         
         def on_group_added(group_name, creator):
+            print(f"Processing group addition: {group_name} by {creator}")
+            
+            # Check if group is already in the list to prevent duplicates
+            if group_name in self.groups:
+                print(f"Group {group_name} already exists in UI")
+                return
+                
             # Add the group to the UI
             group_button = ctk.CTkButton(
                 self.contacts_frame,
-                text=group_name,
+                text=f"Group: {group_name}",  # Add prefix to identify as a group
                 command=lambda g=group_name: self.select_contact(g)
             )
             group_button.pack(padx=5, pady=5, fill="x")
             
             # Add to groups list and initialize chat history
             self.groups.append(group_name)
-            self.chat_history[group_name] = []
+            self.chat_history[group_name] = client.retrieve_chat_history(group_name, 'multicast')
             
             # Notify user
             messagebox.showinfo("New Group", f"You have been added to group '{group_name}' by {creator}")
