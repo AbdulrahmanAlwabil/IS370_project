@@ -1,1 +1,25 @@
-# Use *pip install -r requirements.txt* in IDE terminal.
+
+
+# To begin starting this application, you will need to configure a few things:
+
+## 1
+### You should have a Python environment setup (preferrably a .venv folder).
+
+## 2
+### Use *pip install -r requirements.txt* in IDE terminal.
+
+## 3
+### You must configure the IP addresses & port numbers in the server & client. Here is how:
+#### During development, we used a Hamachi network so we can remotely test the app. In the client file (that is, client/client.py) you should find in the constructor of the Client class (line 10) 2 attributes that reflect the port and IP address, you can change the IP to "localhost" to use the app locally. Also, you must change it in the server.py file, you will find it below the imports directly (line 22).
+
+## 4
+### After doing the three steps above, run server.py in a dedicated terminal (so the server runs and starts listening for new clients).
+
+## 5
+### Next, run client_main.py in another dedicated terminal. This module has the GUI functionality as well as maintaining communications with the client script.
+### You can now sign up with a username and a password, and it should work as long as the server is running
+
+# Final Notes
+### You can create multiple accounts, and every account created will be displayed to every other user. There is no need to add friends.
+### You can get remote connections using network software such as Logmein Hamachi to test concurrency with another devices and clients.
+### The server.py terminal shows logs of every request that has been sent by clients, as well as the body of each communication. Also, you can either: 1- view every connected client. or 2- exit the server (i.e. shut it down). 

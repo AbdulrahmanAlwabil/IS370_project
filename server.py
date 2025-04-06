@@ -19,6 +19,9 @@ connected_clients = []
 username_to_socket = {} 
 socket_to_encryptor = {}
 
+IP = "25.11.190.207"
+PORT = 8080
+
 # Function to handle communication with a client
 def handle_client(client_socket, addr):
     print(f"Connected by {addr}")
@@ -193,9 +196,9 @@ def view_connected_clients():
 
 # Main server setup
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.bind(("25.11.190.207", 8080))
+server.bind((IP, PORT))
 server.listen(20)
-print("Server is listening on port 8080...")
+print("Server is listening on port ",PORT +"...")
 
 
 # Thread to accept new clients

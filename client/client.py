@@ -4,12 +4,16 @@ from encryption import Encryptor
 import threading
 
 
+
 class Client:
     def __init__(self):
+        IP = "25.11.190.207"
+        PORT = 8080
+        
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.encryptor = Encryptor()  # Initialize the encryptor
         try:
-            self.client.connect(("25.11.190.207", 8080))
+            self.client.connect((IP, PORT))
             print("Connected to the server.")
             self.username = None
         except ConnectionRefusedError:
