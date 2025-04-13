@@ -2,11 +2,10 @@ import customtkinter as ctk
 from tkinter import messagebox
 from client.client import Client
 
-# Initialize the customtkinter appearance
-ctk.set_appearance_mode("Dark")  # Modes: "System" (default), "Dark", "Light"
+ctk.set_appearance_mode("Dark")  
 ctk.set_default_color_theme(
     "dark-blue"
-)  # Available themes: "blue" (default), "green", "dark-blue"
+)  
 
 client = Client()
 
@@ -50,7 +49,6 @@ class LoginSignupApp(ctk.CTk):
         
         response = client.authenticate_user(username, password)
         
-        # Add your login logic here
         if 'AUTH' in response:
             self.destroy()
             app = MessengerApp()
@@ -66,7 +64,6 @@ class LoginSignupApp(ctk.CTk):
         
         response = client.create_user(username, password)
         
-        # Add your signup logic here
         if 'AUTH' in response:
             messagebox.showinfo("Success", "Signup successful! Please login.")
         elif 'DECL' in response:
@@ -118,10 +115,9 @@ class MessengerApp(ctk.CTk):
             self.left_frame, width=180, height=500
         )
         self.contacts_frame.grid(
-            row=1, column=0, columnspan=3, padx=10, pady=5, sticky="nsew"  # Change columnspan to 3 and sticky to "nsew"
+            row=1, column=0, columnspan=3, padx=10, pady=5, sticky="nsew"
         )
 
-        # Also fix the column configuration to distribute space properly
         self.left_frame.grid_columnconfigure(0, weight=1)  # Contacts label column
         self.left_frame.grid_columnconfigure(1, weight=1)  # Create Group button column
         self.left_frame.grid_columnconfigure(2, weight=1)  # Broadcast button column
@@ -194,7 +190,7 @@ class MessengerApp(ctk.CTk):
         )
         self.send_button.grid(row=1, column=0, padx=5, pady=5, sticky="ew")
 
-        # Button to attach an image or video
+        # Button to attach a file
         self.attach_button = ctk.CTkButton(
             self.bottom_frame, text="Attach", command=self.attach_file
         )
@@ -206,6 +202,7 @@ class MessengerApp(ctk.CTk):
         # Setup message callbacks and start listening for messages
         self.setup_message_callbacks()
         
+                
     def setup_message_callbacks(self):
         # Setup callbacks for messages
         def on_message_received(sender, message):
@@ -249,17 +246,22 @@ class MessengerApp(ctk.CTk):
             # Notify user
             messagebox.showinfo("New Group", f"You have been added to group '{group_name}' by {creator}")
         
-        # Set the callbacks on the client
+        def on_server_disconnected():
+            self.after(0, self.handle_server_disconnection)
+        
         client.message_callback = on_message_received
         client.group_message_callback = on_group_message_received
         client.broadcast_message_callback = on_broadcast_message_received
         client.group_added_callback = on_group_added
+        client.server_disconnected_callback = on_server_disconnected
         
-        # Start the listening thread
-        client.start_listening()
+        self.is_connecteed = client.start_listening()
+    
+    def handle_server_disconnection(self):
+        messagebox.showerror('Connection Lost', 'The server has disconnected. The app will now close.')
+        self.destroy()
 
     def create_group(self):
-        # First, prompt the user to enter a group name
         group_name = ctk.CTkInputDialog(
             title="Create Group", text="Enter the name of the group:"
         ).get_input()
@@ -268,28 +270,23 @@ class MessengerApp(ctk.CTk):
             messagebox.showwarning("Warning", "Group name cannot be empty.")
             return
 
-        # Create a custom dialog to select contacts
         select_members_dialog = ctk.CTkToplevel(self)
         select_members_dialog.title(f"Add Members to {group_name}")
         select_members_dialog.geometry("300x400")
         select_members_dialog.resizable(False, False)
         select_members_dialog.grab_set()  # Make it modal
 
-        # Label
         ctk.CTkLabel(select_members_dialog, text="Select contacts to add:").pack(pady=10)
 
-        # Frame for contacts
         contacts_frame = ctk.CTkScrollableFrame(select_members_dialog, width=250, height=280)
         contacts_frame.pack(padx=10, pady=5, fill="both", expand=True)
 
-        # Create checkboxes for each contact
         contact_vars = {}
         for contact in self.contacts:
             var = ctk.IntVar(value=0)
             contact_vars[contact] = var
             ctk.CTkCheckBox(contacts_frame, text=contact, variable=var).pack(pady=3, anchor="w")
 
-        # Add selected users to group and close dialog
         def confirm_selection():
             selected_contacts = [contact for contact, var in contact_vars.items() if var.get() == 1]
             
@@ -298,12 +295,10 @@ class MessengerApp(ctk.CTk):
                 return
 
             try:
-                # Call the client method to create a group and add members
                 if client.create_group(group_name, selected_contacts):
-                    # Add the group to the UI
                     group_button = ctk.CTkButton(
                         self.contacts_frame,
-                        text=f"Group: {group_name}",  # Prefix with "Group:" to differentiate
+                        text=f"Group: {group_name}",  
                         command=lambda g=group_name: self.select_contact(g),
                     )
                     group_button.pack(padx=5, pady=5, fill="x")
@@ -321,7 +316,6 @@ class MessengerApp(ctk.CTk):
             
             select_members_dialog.destroy()
 
-        # Buttons
         buttons_frame = ctk.CTkFrame(select_members_dialog)
         buttons_frame.pack(pady=10, fill="x")
         
@@ -335,10 +329,8 @@ class MessengerApp(ctk.CTk):
 
     def open_broadcast_chat(self):
         self.selected_contact = 'broadcast'
-        # Set the chat title to "Broadcast"
         self.chat_title_label.configure(text="Broadcast Chat")
 
-        # Clear existing chat messages
         for widget in self.chat_display.winfo_children():
             widget.destroy()
 
@@ -351,7 +343,6 @@ class MessengerApp(ctk.CTk):
         self.selected_contact = contact
         self.chat_title_label.configure(text=f"Chat with {contact}")
 
-        # Clear existing chat messages
         for widget in self.chat_display.winfo_children():
             widget.destroy()
 
@@ -368,7 +359,6 @@ class MessengerApp(ctk.CTk):
 
     def add_message(self, message, sender="other"):
 
-        # Create a container frame for the message bubble
         message_frame = ctk.CTkFrame(self.chat_display)
         message_frame.pack(fill="x", padx=5, pady=2)
 

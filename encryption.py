@@ -6,16 +6,13 @@ class Encryptor:
         """Initialize the encryptor with a key from file or generate a new one."""
         self.key_path = key_path
         
-        # Create directory if it doesn't exist
         os.makedirs(os.path.dirname(key_path), exist_ok=True)
         
-        # Check if key exists, if not, generate and save it
         if not os.path.exists(key_path):
             self.key = Fernet.generate_key()
             with open(key_path, 'wb') as key_file:
                 key_file.write(self.key)
         else:
-            # Load existing key
             with open(key_path, 'rb') as key_file:
                 self.key = key_file.read()
         

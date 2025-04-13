@@ -75,7 +75,6 @@ def authenticate_user(username, password):
         cur.execute("SELECT password FROM users WHERE username = ?", (username,))
         row = cur.fetchone()
         
-        # If the user exists, verify the password
         if row:
             stored_hash = row[0]
             return bcrypt.checkpw(password.encode(), stored_hash.encode())
@@ -123,7 +122,7 @@ def add_user_to_group(username, group_name):
             return True
         except sqlite3.IntegrityError:
             print(f"User '{username}' is already in group '{group_name}'.")
-            return True  # Still successful since the user is in the group
+            return True  
     else:
         print("Invalid username or group name.")
         return False
@@ -204,7 +203,6 @@ def get_chat_history(sender_name, receiver_name, chat_type):
         history = []
         
         if chat_type == 'broadcast':
-            # Get ALL broadcast messages with sender info
             cur.execute('''SELECT message, sender_id FROM messages 
                            WHERE type = 'broadcast'  
                            ORDER BY id ASC''')
@@ -215,14 +213,12 @@ def get_chat_history(sender_name, receiver_name, chat_type):
                 history.append({sender: message})
             
         elif chat_type == 'multicast':
-            # Get group ID from the group name
             group_id = get_group_id(receiver_name)
             
             if not group_id:
                 print(f"Group '{receiver_name}' not found")
                 return []
                 
-            # Get all messages sent to this group
             cur.execute('''SELECT message, sender_id FROM messages 
                            WHERE receiver_id = ? AND type = 'multicast'  
                            ORDER BY id ASC''', (group_id,))

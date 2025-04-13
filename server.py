@@ -86,7 +86,7 @@ def handle_client(client_socket, addr):
                 response = "MSG-SENT"
                 client_socket.send(encryptor.encrypt(response))
                 
-                 # Forward to all group members who are online
+                # Forward to all group members who are online
                 group_members = db_get_group_members(group)  # You need to implement this
                 for member in group_members:
                     if member != sender and member in username_to_socket:
@@ -178,15 +178,6 @@ def handle_client(client_socket, addr):
         client_socket.close()
 
 
-# Function to broadcast a message to all connected clients
-def broadcast_message(message):
-    for client_socket, addr in connected_clients:
-        try:
-            client_socket.send(message.encode())
-        except Exception as e:
-            print(f"Failed to send message to {addr}: {e}")
-
-
 # Function to display connected clients
 def view_connected_clients():
     print("Connected clients:")
@@ -198,7 +189,7 @@ def view_connected_clients():
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((IP, PORT))
 server.listen(20)
-print("Server is listening on port ",PORT +"...")
+print("Server is listening on port ",str(PORT) +"...")
 
 
 # Thread to accept new clients
@@ -225,25 +216,16 @@ def authenticate_user(username, password):
     else:
         print(f"Authentication failed for user '{username}'.")
         return False
-
-
-    def find_client(username):
-        for i in object_connected_clients:
-            if i.username == username:
-                return i    
-
+   
 
 # Command loop for the server admin
 while True:
-    command = input("Enter a command (broadcast/view/exit): ").strip().lower()
-    if command == "broadcast":
-        message = input("Enter the message to broadcast: ")
-        broadcast_message(message)
-    elif command == "view":
+    command = input("Enter a command (view/exit): ").strip().lower()
+    if command == "view":
         view_connected_clients()
     elif command == "exit":
         print("Shutting down the server...")
         server.close()
         break
     else:
-        print("Unknown command. Available commands: broadcast, view, exit.")
+        print("Unknown command. Available commands: view, exit.")

@@ -104,7 +104,7 @@ class Client:
     def retrieve_chat_history(self, receiver_username, chat_type):
         if not self.client:
             print("No connection to the server.")
-            return []  # Return empty list instead of error string
+            return []
 
         try:
             self.sending = True
@@ -203,26 +203,18 @@ class Client:
                 f"UNICAST-MSG::{msg}::{self.username}::{receiver}"
             )
             
-            # Use a timeout to wait for server confirmation
-            import time
-            start_time = time.time()
-            while time.time() - start_time < 3:  # Wait up to 3 seconds for response
-                try:
-                    # Keep checking if there's data to receive
-                    encrypted_response = self.client.recv(4096)
-                    if encrypted_response:
-                        response = self.encryptor.decrypt_to_string(encrypted_response)
-                        self.sending = False
-                        return "MSG-SENT" in response
-                    
-                except socket.timeout:
-                    # Socket timeout, continue waiting
-                    continue
-                except Exception as e:
-                    print(f"Error waiting for response: {e}")
-                    break
+              
+            try:
+                # Keep checking if there's data to receive
+                encrypted_response = self.client.recv(4096)
+                if encrypted_response:
+                    response = self.encryptor.decrypt_to_string(encrypted_response)
+                    self.sending = False
+                    return "MSG-SENT" in response
+            except Exception as e:
+                print(f"Error waiting for response: {e}")
+                
             
-            # If we get here, we timed out without receiving a response
             self.sending = False
             return True  # Assume success even if we didn't get a response
         except Exception as e:
@@ -244,26 +236,19 @@ class Client:
                 f"MULTICAST-MSG::{msg}::{self.username}::{group}"
             )
             
-            # Use a timeout to wait for server confirmation
-            import time
-            start_time = time.time()
-            while time.time() - start_time < 3:  # Wait up to 3 seconds for response
-                try:
-                    # Keep checking if there's data to receive
-                    encrypted_response = self.client.recv(4096)
-                    if encrypted_response:
-                        response = self.encryptor.decrypt_to_string(encrypted_response)
-                        self.sending = False
-                        return "MSG-SENT" in response
-                    
-                except socket.timeout:
-                    # Socket timeout, continue waiting
-                    continue
-                except Exception as e:
-                    print(f"Error waiting for response: {e}")
-                    break
+            try:
+                # Keep checking if there's data to receive
+                encrypted_response = self.client.recv(4096)
+                if encrypted_response:
+                    response = self.encryptor.decrypt_to_string(encrypted_response)
+                    self.sending = False
+                    return "MSG-SENT" in response
+                
+            except Exception as e:
+                print(f"Error waiting for response: {e}")
+                
             
-            # If we get here, we timed out without receiving a response
+            
             self.sending = False
             return True  # Assume success even if we didn't get a response
         except Exception as e:
@@ -283,28 +268,19 @@ class Client:
             # Send the message
             self.send_encrypted_message(f"BROADCAST-MSG::{msg}::{self.username}")
             
-            # Use a timeout to wait for server confirmation
-            import time
-            start_time = time.time()
-            while time.time() - start_time < 3:  # Wait up to 3 seconds for response
-                try:
-                    # Keep checking if there's data to receive
-                    encrypted_response = self.client.recv(4096)
-                    if encrypted_response:
-                        response = self.encryptor.decrypt_to_string(encrypted_response)
-                        self.sending = False
-                        return "MSG-SENT" in response
-                    
-                except socket.timeout:
-                    # Socket timeout, continue waiting
-                    continue
-                except Exception as e:
-                    print(f"Error waiting for response: {e}")
-                    break
+            try:
+                encrypted_response = self.client.recv(4096)
+                if encrypted_response:
+                    response = self.encryptor.decrypt_to_string(encrypted_response)
+                    self.sending = False
+                    return "MSG-SENT" in response
+                
+            except Exception as e:
+                print(f"Error waiting for response: {e}")
+                
             
-            # If we get here, we timed out without receiving a response
             self.sending = False
-            return True  # Assume success even if we didn't get a response
+            return True
         except Exception as e:
             print(f"Error during sending: {e}")
             self.sending = False
@@ -314,7 +290,6 @@ class Client:
         def listen_for_messages():
             while True:
                 try:
-                    # Use select to check if there's data available without blocking
                     import select
                     ready_to_read, _, _ = select.select([self.client], [], [], 0.1)
                     
@@ -328,7 +303,6 @@ class Client:
                             message = self.encryptor.decrypt_to_string(encrypted_data)
                             print(f"Received message: {message}")
                             
-                            # Process all real-time messages regardless of sending state
                             if message.startswith("NEW-MSG::"):
                                 try:
                                     _, content, sender = message.split("::")
@@ -368,11 +342,13 @@ class Client:
                                 
                         except Exception as e:
                             print(f"Error processing message: {e}")
+                            if hasattr(self, 'server_disconnected_callback'):
+                                self.server_disconnected_callback()
+                            break
                             
                 except Exception as e:
                     print(f"Error in listening thread: {e}")
                     import time
-                    time.sleep(0.5)  # Add delay to prevent rapid error loops
+                    time.sleep(0.5)
                         
-        # Start the listening thread
         threading.Thread(target=listen_for_messages, daemon=True).start()
