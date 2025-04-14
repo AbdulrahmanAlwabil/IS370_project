@@ -1,6 +1,7 @@
 import socket
 import threading
 import pickle
+import logging
 from encryption import Encryptor
 from database.db_manager import (
         authenticate_user as db_authenticate_user,
@@ -19,15 +20,16 @@ connected_clients = []
 username_to_socket = {} 
 socket_to_encryptor = {}
 
-IP = "25.11.190.207"
+IP = "localhost" # 25.11.190.207
 PORT = 8080
+
+is_Windows = False    
 
 # Function to handle communication with a client
 def handle_client(client_socket, addr):
     print(f"Connected by {addr}")
     connected_clients.append((client_socket, addr))  # Add client to the list
     encryptor = Encryptor()  # Initialize encryptor for this connection
-    client_object = None
 
     try:
         while True:
@@ -69,6 +71,16 @@ def handle_client(client_socket, addr):
                 db_create_message(sender, receiver, "unicast", msg)
                 response = "MSG-SENT"
                 client_socket.send(encryptor.encrypt(response))
+                # Log the message
+                users = sorted([sender, receiver])
+                
+                if is_Windows:
+                    file_path = f'logs\\unicast_logs\\{str(users[0])}-{str(users[1])}.log'
+                else:
+                    file_path = f'logs/unicast_logs/{str(users[0])}-{str(users[1])}.log'
+                
+                uni_logger = create_logger(file_path)
+                uni_logger.info(f"{str(sender)}: {str(msg)}")
                  # Forward the message to the recipient if they're online
                 if receiver in username_to_socket:
                     recipient_socket = username_to_socket[receiver]
@@ -85,6 +97,14 @@ def handle_client(client_socket, addr):
                 db_create_message(sender, group, "multicast", msg)
                 response = "MSG-SENT"
                 client_socket.send(encryptor.encrypt(response))
+                
+                if is_Windows:
+                    file_path = f'logs\\multicast_logs\\{str(group)}.log'
+                else:
+                    file_path = f'logs/multicast_logs/{str(group)}.log'
+                
+                multi_logger = create_logger(file_path)
+                multi_logger.info(f"{str(sender)}: {str(msg)}")
                 
                 # Forward to all group members who are online
                 group_members = db_get_group_members(group)  # You need to implement this
@@ -104,6 +124,13 @@ def handle_client(client_socket, addr):
                 response = "MSG-SENT"
                 client_socket.send(encryptor.encrypt(response))
                 
+                if is_Windows:
+                    file_path = f'logs\\broadcast_logs\\broadcast.log'
+                else:
+                    file_path = f'logs/broadcast_logs/broadcast.log'
+                # Log the message
+                broad_logger = create_logger(file_path)
+                broad_logger.info(f"{str(sender)}: {str(msg)}")
                 # Forward the broadcast message to all connected clients
                 for username, recipient_socket in username_to_socket.items():
                     if username != sender:  # Don't send back to the original sender
@@ -160,6 +187,14 @@ def handle_client(client_socket, addr):
 
                 response = "GROUP-CREATED-SUCCESS"
                 client_socket.send(encryptor.encrypt(response))
+                
+            elif message.startswith("GET-GROUP-MEMBERS::"):
+                _, group_name = message.split("::")
+                members = db_get_group_members(group_name)
+
+                data = pickle.dumps(members)
+                encrypted_data = encryptor.encrypt(data)
+                client_socket.sendall(encrypted_data)
             else:
                 response = "Unknown request from client."
                 client_socket.send(encryptor.encrypt(response))
@@ -177,6 +212,18 @@ def handle_client(client_socket, addr):
             del socket_to_encryptor[client_socket]
         client_socket.close()
 
+def create_logger(file_path):
+    # Set up a logger for a specific file.
+    logger = logging.getLogger(file_path)
+    logger.setLevel(logging.INFO)
+
+    # Check to avoid duplicate logs
+    if not logger.handlers:
+        handler = logging.FileHandler(file_path)
+        handler.setFormatter(logging.Formatter('%(message)s'))
+        logger.addHandler(handler)
+
+    return logger
 
 # Function to display connected clients
 def view_connected_clients():
@@ -189,7 +236,7 @@ def view_connected_clients():
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((IP, PORT))
 server.listen(20)
-print("Server is listening on port ",str(PORT) +"...")
+print("Server is listening on port",str(PORT) +"...")
 
 
 # Thread to accept new clients

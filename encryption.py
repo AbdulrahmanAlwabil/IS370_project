@@ -2,7 +2,7 @@ from cryptography.fernet import Fernet
 import os
 
 class Encryptor:
-    def __init__(self, key_path='src/encryption.key'):
+    def __init__(self, key_path='keys/encryption.key'):
         """Initialize the encryptor with a key from file or generate a new one."""
         self.key_path = key_path
         

@@ -7,7 +7,7 @@ import threading
 
 class Client:
     def __init__(self):
-        IP = "25.11.190.207"
+        IP = "localhost"
         PORT = 8080
         
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -285,6 +285,22 @@ class Client:
             print(f"Error during sending: {e}")
             self.sending = False
             return False
+    def get_group_members(self, group_name):
+        if not self.client:
+            print("No connection to the server.")
+            return False
+
+        try:
+            # Send request to server
+            self.send_encrypted_message(f"GET-GROUP-MEMBERS::{group_name}")
+            data = self.receive_encrypted_object()
+
+            members_list = list(data)
+
+            return members_list
+        except Exception as e:
+            print(f"Error during retrieving group members: {e}")
+            return []
 
     def start_listening(self):
         def listen_for_messages():
@@ -303,52 +319,33 @@ class Client:
                             message = self.encryptor.decrypt_to_string(encrypted_data)
                             print(f"Received message: {message}")
                             
+                            # Process different types of messages
                             if message.startswith("NEW-MSG::"):
-                                try:
-                                    _, content, sender = message.split("::")
-                                    if hasattr(self, 'message_callback'):
-                                        self.message_callback(sender, content)
-                                except ValueError:
-                                    print(f"Error parsing message format: {message}")
-                                    
+                                _, content, sender = message.split("::")
+                                if hasattr(self, 'message_callback'):
+                                    self.message_callback(sender, content)
                             elif message.startswith("NEW-GROUP-MSG::"):
-                                try:
-                                    _, content, sender, group = message.split("::")
-                                    if hasattr(self, 'group_message_callback'):
-                                        self.group_message_callback(group, sender, content)
-                                except ValueError:
-                                    print(f"Error parsing group message format: {message}")
-                                    
+                                _, content, sender, group = message.split("::")
+                                if hasattr(self, 'group_message_callback'):
+                                    self.group_message_callback(group, sender, content)
                             elif message.startswith("NEW-BROADCAST-MSG::"):
-                                try:
-                                    _, content, sender = message.split("::")
-                                    if hasattr(self, 'broadcast_message_callback'):
-                                        self.broadcast_message_callback(sender, content)
-                                except ValueError:
-                                    print(f"Error parsing broadcast message format: {message}")
-                                    
+                                _, content, sender = message.split("::")
+                                if hasattr(self, 'broadcast_message_callback'):
+                                    self.broadcast_message_callback(sender, content)
                             elif message.startswith("NEW-GROUP-ADDED::"):
-                                try:
-                                    _, group_name, creator = message.split("::")
-                                    print(f"Group add notification received: {group_name} by {creator}")
-                                    if hasattr(self, 'group_added_callback'):
-                                        self.group_added_callback(group_name, creator)
-                                except ValueError:
-                                    print(f"Error parsing group added message: {message}")
-                                    
+                                _, group_name, creator = message.split("::")
+                                if hasattr(self, 'group_added_callback'):
+                                    self.group_added_callback(group_name, creator)
                             elif "MSG-SENT" in message:
-                                # This is a response to a send operation
                                 self.sending = False
-                                
                         except Exception as e:
                             print(f"Error processing message: {e}")
                             if hasattr(self, 'server_disconnected_callback'):
                                 self.server_disconnected_callback()
                             break
-                            
                 except Exception as e:
                     print(f"Error in listening thread: {e}")
                     import time
-                    time.sleep(0.5)
-                        
+                    time.sleep(0.1) # Avoid busy waiting
+
         threading.Thread(target=listen_for_messages, daemon=True).start()

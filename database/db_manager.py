@@ -1,7 +1,12 @@
 import sqlite3
 import bcrypt
 
-DB_PATH = 'database\chat.db'
+isWindows = False
+
+if isWindows:
+    DB_PATH = 'database\chat.db'
+else:
+    DB_PATH = 'database/chat.db'
 
 # ========================
 # DATABASE INITIALIZATION
@@ -261,7 +266,7 @@ def get_contacts(sender_username):
 # ========================
 # MAIN FOR TESTING
 # ========================
-
+    
 if __name__ == "__main__":
     init_db()
     

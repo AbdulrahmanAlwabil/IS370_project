@@ -126,6 +126,7 @@ class MessengerApp(ctk.CTk):
         self.contacts = client.get_contacts()
         self.groups = client.get_user_groups()
         self.chat_history = dict() # {'user1':{'user1':'msg11', 'user2':'msg12',...,username:'msg1n'}, user2:..., group1:...}
+        self.groups_members = dict() # {'group1':['user1', 'user2', ...], ...}
         
         for contact in self.contacts:
             contact_btn = ctk.CTkButton(
@@ -141,12 +142,14 @@ class MessengerApp(ctk.CTk):
         for group in self.groups:
             group_button = ctk.CTkButton(
                 self.contacts_frame,
-                text=group,
+                text=f"Group: {group}",
                 command=lambda g=group: self.select_contact(g),
             )
             group_button.pack(padx=5, pady=5, fill="x")
             
             self.chat_history[group] = client.retrieve_chat_history(group, 'multicast')     
+            self.groups_members[group] = client.get_group_members(group)
+            
              
         # Retreive Broadcast history
         self.broadcast_history = client.retrieve_chat_history(receiver_username=None, chat_type='broadcast') 
@@ -165,15 +168,21 @@ class MessengerApp(ctk.CTk):
         self.chat_title_label = ctk.CTkLabel(
             self.right_frame, text="Select a contact to chat", font=("Helvetica", 16)
         )
-        self.chat_title_label.grid(row=0, column=0, padx=10, pady=5, sticky="w")
-
+        self.chat_title_label.grid(row=0, column=0, padx=10, sticky="w")
+        
+        # Label showing the selected group's members
+        self.chat_members_label = ctk.CTkLabel(
+            self.right_frame, text="", font=("Helvetica", 12), wraplength=300, justify='left'
+        )
+        self.chat_members_label.grid(row=1, column=0, padx=10, sticky="w")
+        
         # Scrollable frame to display chat messages
         self.chat_display = ctk.CTkScrollableFrame(self.right_frame, height=400)
-        self.chat_display.grid(row=1, column=0, padx=10, pady=5, sticky="nswe")
+        self.chat_display.grid(row=2, column=0, padx=10, pady=5, sticky="nswe")
 
         # Bottom frame contains the message entry and the buttons
         self.bottom_frame = ctk.CTkFrame(self.right_frame)
-        self.bottom_frame.grid(row=2, column=0, padx=10, pady=10, sticky="ew")
+        self.bottom_frame.grid(row=3, column=0, padx=10, pady=10, sticky="ew")
         self.bottom_frame.grid_columnconfigure(0, weight=1)
 
         # Entry widget for typing messages
@@ -255,7 +264,6 @@ class MessengerApp(ctk.CTk):
         client.group_added_callback = on_group_added
         client.server_disconnected_callback = on_server_disconnected
         
-        self.is_connecteed = client.start_listening()
     
     def handle_server_disconnection(self):
         messagebox.showerror('Connection Lost', 'The server has disconnected. The app will now close.')
@@ -308,6 +316,7 @@ class MessengerApp(ctk.CTk):
                     self.chat_history[group_name] = []
                     
                     messagebox.showinfo("Success", f"Group '{group_name}' created successfully!")
+                    self.groups_members[group_name] = selected_contacts
                     select_members_dialog.destroy()
                 else:
                     messagebox.showerror("Error", "Failed to create group.")
@@ -342,6 +351,10 @@ class MessengerApp(ctk.CTk):
     def select_contact(self, contact):
         self.selected_contact = contact
         self.chat_title_label.configure(text=f"Chat with {contact}")
+        if contact in self.groups:
+            self.chat_members_label.configure(text=f"{', '.join(self.groups_members[contact])}")
+        else:
+            self.chat_members_label.configure(text="")
 
         for widget in self.chat_display.winfo_children():
             widget.destroy()
