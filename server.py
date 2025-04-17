@@ -2,7 +2,9 @@ import socket
 import threading
 import pickle
 import logging
+import os
 from encryption import Encryptor
+from settings import IP, PORT, UNICAST_LOG_PATH, MULTICAST_LOG_PATH, BROADCAST_LOG_PATH
 from database.db_manager import (
         authenticate_user as db_authenticate_user,
         create_message as db_create_message,
@@ -20,10 +22,6 @@ connected_clients = []
 username_to_socket = {} 
 socket_to_encryptor = {}
 
-IP = "localhost" # 25.11.190.207
-PORT = 8080
-
-is_Windows = False    
 
 # Function to handle communication with a client
 def handle_client(client_socket, addr):
@@ -74,10 +72,9 @@ def handle_client(client_socket, addr):
                 # Log the message
                 users = sorted([sender, receiver])
                 
-                if is_Windows:
-                    file_path = f'logs\\unicast_logs\\{str(users[0])}-{str(users[1])}.log'
-                else:
-                    file_path = f'logs/unicast_logs/{str(users[0])}-{str(users[1])}.log'
+                file_path = os.path.join(
+                    UNICAST_LOG_PATH, f"{users[0]}_{users[1]}.log"
+                )
                 
                 uni_logger = create_logger(file_path)
                 uni_logger.info(f"{str(sender)}: {str(msg)}")
@@ -98,10 +95,9 @@ def handle_client(client_socket, addr):
                 response = "MSG-SENT"
                 client_socket.send(encryptor.encrypt(response))
                 
-                if is_Windows:
-                    file_path = f'logs\\multicast_logs\\{str(group)}.log'
-                else:
-                    file_path = f'logs/multicast_logs/{str(group)}.log'
+                file_path = os.path.join(
+                    MULTICAST_LOG_PATH, f"{group}.log"
+                )
                 
                 multi_logger = create_logger(file_path)
                 multi_logger.info(f"{str(sender)}: {str(msg)}")
@@ -124,10 +120,10 @@ def handle_client(client_socket, addr):
                 response = "MSG-SENT"
                 client_socket.send(encryptor.encrypt(response))
                 
-                if is_Windows:
-                    file_path = f'logs\\broadcast_logs\\broadcast.log'
-                else:
-                    file_path = f'logs/broadcast_logs/broadcast.log'
+                file_path = os.path.join(
+                    BROADCAST_LOG_PATH, "broadcast.log"
+                )
+                
                 # Log the message
                 broad_logger = create_logger(file_path)
                 broad_logger.info(f"{str(sender)}: {str(msg)}")

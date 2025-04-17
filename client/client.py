@@ -2,13 +2,11 @@ import socket
 import pickle
 from encryption import Encryptor
 import threading
-
+from settings import IP, PORT
 
 
 class Client:
     def __init__(self):
-        IP = "localhost"
-        PORT = 8080
         
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.encryptor = Encryptor()  # Initialize the encryptor

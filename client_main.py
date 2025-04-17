@@ -2,6 +2,7 @@ import customtkinter as ctk
 from tkinter import messagebox
 from client.client import Client
 
+
 ctk.set_appearance_mode("Dark")  
 ctk.set_default_color_theme(
     "dark-blue"

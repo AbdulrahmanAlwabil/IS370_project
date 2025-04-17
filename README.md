@@ -6,11 +6,11 @@
 ### You should have a Python environment set up (preferably a .venv folder).
 
 ## 2
-### Use *pip install -r requirements.txt* in IDE terminal.
+### Use *pip install -r requirements.txt* in IDE terminal to install required dependencies (libraries).
 
 ## 3
 ### You must configure the IP addresses & port numbers in the server & client. Here is how:
-#### During development, we used a Hamachi network so we can remotely test the app. In the client file (that is, client/client.py) you should find in the constructor of the Client class (line 10) 2 attributes that reflect the port and IP address, you can change the IP to "localhost" to use the app locally. Also, you must change it in the server.py file, you will find it below the imports directly (line 22).
+#### During development, we used a Hamachi network so we can remotely test the app. In the settings.py file, change the IP address & port number to 'localhost' and whatever free port number you have respectively (lines 3 & 4).
 
 ## 4
 ### After doing the three steps above, run server.py in a dedicated terminal (so the server runs and starts listening for new clients).
@@ -19,8 +19,6 @@
 ### Next, run client_main.py in another dedicated terminal. This module has the GUI functionality as well as maintaining communications with the client script.
 ### You can now sign up with a username and a password, and it should work as long as the server is running
 
-## 6
-### If you are using MacOS and find some trouble even after doing the 5  steps above, it might be caused by the file paths in database/db_manager.py and server.py. You can change the variable 'is_Windows' (line 4 in db_manager.py and line 26 in server.py) to True if you are using Windows, or to False if you are using MacOS. (This is a simple way to make sure that our app runs on both OSs.). By default is_Windows = False.
 
 # Final Notes
 ### You can create multiple accounts, and every account created will be displayed to every other user. There is no need to add friends.
@@ -30,9 +28,9 @@
 
 # Accounts
 ## You can use the following accounts we created to test the app:
-### abdulrahman, pass: 123
-### omar, pass: 123
-### mohamed, pass: 123
-### fahad, pass: 123
-### ali, pass: 123
-### saqer, pass: 123
+- abdulrahman, pass: 123
+- omar, pass: 123
+- mohamed, pass: 123
+- fahad, pass: 123
+- ali, pass: 123
+- saqer, pass: 123

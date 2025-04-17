@@ -1,12 +1,8 @@
 import sqlite3
 import bcrypt
+import os
 
-isWindows = False
-
-if isWindows:
-    DB_PATH = 'database\chat.db'
-else:
-    DB_PATH = 'database/chat.db'
+DB_PATH = os.path.join('database', 'chat.db')
 
 # ========================
 # DATABASE INITIALIZATION
