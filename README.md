@@ -1,36 +1,78 @@
+# IS370 Project
 
+A secure client-server messaging application with end-to-end encryption.
 
-# To begin starting this application, you will need to configure a few things:
+## Features
 
-## 1
-### You should have a Python environment set up (preferably a .venv folder).
+- User authentication and registration
+- Encrypted messaging (unicast, multicast, broadcast)
+- Group chat functionality
+- Message history logging
+- GUI interface built with CustomTkinter
 
-## 2
-### Use *pip install -r requirements.txt* in IDE terminal to install required dependencies (libraries).
+## Requirements
 
-## 3
-### You must configure the IP addresses & port numbers in the server & client. Here is how:
-#### During development, we used a Hamachi network so we can remotely test the app. In the settings.py file, change the IP address & port number to 'localhost' and whatever free port number you have respectively (lines 3 & 4).
+- Python 3.x
+- Dependencies listed in requirements.txt
 
-## 4
-### After doing the three steps above, run server.py in a dedicated terminal (so the server runs and starts listening for new clients).
+## Installation
 
-## 5
-### Next, run client_main.py in another dedicated terminal. This module has the GUI functionality as well as maintaining communications with the client script.
-### You can now sign up with a username and a password, and it should work as long as the server is running
+1. Set up a Python virtual environment:
+   ```
+   python -m venv .venv
+   ```
 
+2. Activate the virtual environment:
+   - Windows: `.venv\Scripts\activate`
+   - Linux/Mac: `source .venv/bin/activate`
 
-# Final Notes
-### You can create multiple accounts, and every account created will be displayed to every other user. There is no need to add friends.
-### You can get remote connections using network software such as Logmein Hamachi to test concurrency with other devices and clients.
-### The server.py terminal shows logs of every request that has been sent by clients, as well as the body of each communication. Also, you can either: 1- view every connected client. or 2- exit the server (i.e. shut it down). 
-### Message logs are viewed in the logs folder in the project directory. A log file is created dynamically once a chat has been initiated (that is, a message has been sent for the first time in that particular chat) 
+3. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
 
-# Accounts
-## You can use the following accounts we created to test the app:
-- abdulrahman, pass: 123
-- omar, pass: 123
-- mohamed, pass: 123
-- fahad, pass: 123
-- ali, pass: 123
-- saqer, pass: 123
+## Configuration
+
+Edit settings.py to configure network settings:
+- Set IP address (use 'localhost' for local testing)
+- Set PORT to an available port number
+
+## Usage
+
+1. Start the server:
+   ```
+   python server.py
+   ```
+
+2. In a separate terminal, start the client:
+   ```
+   python client_main.py
+   ```
+
+3. Create a new account or log in with existing credentials
+
+## Project Structure
+
+- server.py - Server implementation handling client connections
+- client_main.py - GUI application entry point
+- client/client.py - Client communication logic
+- encryption.py - Encryption/decryption implementation
+- database/db_manager.py - Database operations
+- settings.py - Configuration file
+
+## Test Accounts
+
+The following test accounts are available:
+- abdulrahman:123
+- omar:123
+- mohamed:123
+- fahad:123
+- ali:123
+- saqer:123
+
+## Notes
+
+- All connected users are visible to each other
+- Message logs are stored in the logs folder
+- Server terminal displays connection logs and request details
+- For remote testing, use network tools like Hamachi
